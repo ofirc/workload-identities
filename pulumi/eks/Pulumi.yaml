@@ -1,0 +1,7 @@
+name: eks-pod-identities
+runtime: go
+description: EKS Pod Identities with Pulumi
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-go

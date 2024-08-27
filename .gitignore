@@ -1,0 +1,44 @@
+# Go-specific ignores
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Output of the go coverage tool
+*.coverprofile
+
+# Default Go workspace
+go.work
+
+# Packages
+vendor/
+
+# Pulumi-specific ignores
+# Pulumi state files
+Pulumi.*.json
+Pulumi.*.backup.json
+
+# Pulumi secrets
+Pulumi.*.yaml
+
+# Pulumi .cache directory (if present)
+.pulumi/
+
+# Ignore node_modules and package-lock.json if using npm in a mixed-language setup
+node_modules/
+package-lock.json
+
+# Ignore Python virtualenv if using Python in a mixed-language setup
+venv/
+.env/
+
+# IDE/editor-specific ignores
+# GoLand and JetBrains IDEs
+.idea/
+
+# VS Code
+.vscode/
