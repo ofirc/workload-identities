@@ -1,15 +1,25 @@
 # Workload Identities
-This repo demonstrates how to safely and securely access your cloud resources (e.g. AWS S3, Google Cloud Bucket) from managed Kubernetes clusters.
+This repo demonstrates how to safely and securely access your cloud resources (e.g. AWS S3, Google Cloud Bucket) from managed Kubernetes clusters (e.g. EKS, GKE, AKS).
 
-The repo provides blueprints for provisioning clusters using either:
-1. Manually provisioning clusters - through the CLI
-2. Automatically with Terraform (IaC)
-3. Automatically with Pulumi (IaC)
+The repo provides blueprints for provisioning K8s clusters via:
+1. [Manually provisioning clusters - through the CLI](#manual-provisioning)
+2. [Automatically with Terraform (IaC)](#using-terraform)
+3. [Automatically with Pulumi (IaC)](#using-pulumi)
 
-While the marketing varies across the different cloud providers, they all refer to the same concept:
-1. GCP - [GKE Workload Identities](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity)
-2. Azure - [Microsoft Entra Workload Id](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=dotnet)
-3. AWS - [EKS Pod Identities](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html)
+Now while the marketing terms (e.g. Pod Identity vs Workload Identity) vary across the different cloud providers, they all refer to the same concept:
+1. AWS - [EKS Pod Identities](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html)
+2. GCP - [GKE Workload Identities](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity)
+3. Azure - [Microsoft Entra Workload Id](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview?tabs=dotnet)
+
+And rely on the combination of the following to obtain access to cloud assets from the K8s clusters:
+* [ServiceAccount token volume projection (since v1.20 stable)](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#serviceaccount-token-volume-projection)
+* [OAuth 2.0 token exchange (RFC8693)](https://datatracker.ietf.org/doc/html/rfc8693)
+* A [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/) - per worker node agent/broker to cache
+* A [MutatingWebhookConfiguration](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) - for injecting the env vars onto the Pods to later be picked up by the cloud providers SDKs credential chain
+
+What is also cool about this setup is that it allows to support use cases such as:
+* Cross cloud access - e.g. from EKS to buckets on GCP
+* On-prem K8s clusters to cloud - e.g. from OpenShift/Rancher to your Amazon RDS database
 
 # Manual provisioning
 ## AWS EKS
@@ -112,8 +122,67 @@ TBD
 
 
 # Using Terraform
+Start by installing Terraform:
+```
+brew install terraform
+```
+
 ## AWS EKS
-TBD
+Prepare the Terraform environment:
+```
+cd terraform/eks
+terraform init
+terraform plan
+```
+
+If you are happy with the plan, proceed to:
+```
+terraform apply
+```
+
+And set the context to the newly created cluster:
+```
+aws eks update-kubeconfig --region eu-north-1 --name pod-identities-demo-terraform
+```
+
+Verify that the Pod Identities DaemonSet is installed:
+```
+$ kubectl get ds -A
+NAMESPACE     NAME                     DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+kube-system   aws-node                 1         1         1       1            1           <none>          17m
+kube-system   eks-pod-identity-agent   1         1         1       1            1           <none>          15m
+kube-system   kube-proxy               1         1         1       1            1           <none>          17m
+$
+```
+
+Verify that the AWS SDK Pod is up and running:
+```
+$ kubectl get pod --show-labels
+NAME                                   READY   STATUS    RESTARTS   AGE     LABELS
+pod-identities-demo-7899d596c4-4p794   1/1     Running   0          2m17s   app=pod-identities-demo,pod-template-hash=7899d596c4
+$
+```
+
+And finally, access the S3 bucket from the Pod (using pod identities):
+```
+BUCKET_NAME=pod-identities-demo-terraform
+POD_NAME=$(kubectl get pod -lapp=pod-identities-demo -oname)
+kubectl exec $POD_NAME -- aws s3 cp s3://$BUCKET_NAME/hello.txt -
+```
+
+If all went well, you should see the following:
+```
+$ kubectl exec $POD_NAME -- aws s3 cp s3://$BUCKET_NAME/hello.txt -
+Hello, World!%
+$
+```
+
+Take a moment to pause and enjoy the excitement!
+
+And when you are done:
+```
+terraform destroy
+```
 
 ## Azure Kubernetes Services (AKS)
 TBD
