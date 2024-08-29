@@ -1,4 +1,7 @@
 # Workload Identities
+This repo accompanies a talk I gave in a CNCF meetup at San Francisco, Aug'24 around Kubernetes Workload Identities:
+https://drive.google.com/file/d/1QigVMCYaqwizljDRklHcrsVN0AXMBNcv/view?usp=sharing
+
 This repo demonstrates how to safely and securely access your cloud resources (e.g. AWS S3, Google Cloud Bucket) from managed Kubernetes clusters (e.g. EKS, GKE, AKS).
 
 The repo provides blueprints for provisioning K8s clusters via:
